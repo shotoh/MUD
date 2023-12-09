@@ -8,7 +8,7 @@
 #define MAX_LEN 1024
 #define PORT 8888
 
-int main(int argc, char const* argv[]) {
+int main(int argc, char const* argv[]) { //
     int socketfd;
     struct sockaddr_in address;
     char buffer[MAX_LEN];
