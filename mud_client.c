@@ -14,7 +14,7 @@ int main(int argc, char const* argv[]) { //
     char buffer[MAX_LEN];
 
     if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-        printf("Socket creation failed");
+        printf("Socket creation failed\n");
         exit(EXIT_FAILURE);
     }
     memset(&address, 0, sizeof(address));
@@ -24,9 +24,10 @@ int main(int argc, char const* argv[]) { //
     address.sin_addr.s_addr = inet_addr("35.212.252.59");
 
     if (connect(sockfd, (struct sockaddr*) &address,sizeof(address)) < 0) {
-        printf("Connection Failed");
+        printf("Connection Failed\n");
         exit(EXIT_FAILURE);
     }
+    printf("Connected to server\n");
 
     while (1) {
         fgets(buffer, MAX_LEN, stdin);
