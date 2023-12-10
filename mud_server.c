@@ -18,8 +18,9 @@
 #define MAX_LEN 1024
 #define PORT 8888
 
-void checkDir(char c);
+void socketConnect();
 void payload(char* payload);
+void checkDir(char c);
 
 void push(char c);
 char pop();
@@ -29,7 +30,9 @@ void clear();
 
 MQTTClient client;
 char buffer[MAX_LEN];
-char curr[256] = "./start/";
+char curr[256] = "/home/ubuntu/start/";
+
+int listenfd, sockfd;
 
 int top = -1;
 char stack[STACK_SIZE];
@@ -55,10 +58,6 @@ int main() {
     }
     printf("Broker connection successful\n");
 
-    MQTTClient_message msg = MQTTClient_message_initializer;
-    MQTTClient_deliveryToken token;
-
-    int listenfd, sockfd;
     struct sockaddr_in servaddr;
     // Creating socket
     listenfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -81,18 +80,15 @@ int main() {
         perror("Listening failed");
         exit(EXIT_FAILURE);
     }
-    printf("Waiting for client...\n");
-    sockfd = accept(listenfd, (struct sockaddr *) NULL, NULL);
-    if (sockfd < 0) {
-        perror("Accept failed");
-        exit(EXIT_FAILURE);
-    }
-    printf("Client connected\n");
+    socketConnect();
 
     while (1) {
         read(sockfd, buffer, sizeof(buffer));
-        if (!strncmp(buffer, "reset", strlen("reset"))) {
-            strcpy(curr, "./start/");
+        if (!strncmp(buffer, "exit", strlen("exit"))) {
+            close(sockfd);
+            socketConnect();
+        } else if (!strncmp(buffer, "reset", strlen("reset"))) {
+            strcpy(curr, "/home/ubuntu/start/");
             clear();
         } else if (!strncmp(buffer, "n", strlen("n")) || !strncmp(buffer, "w", strlen("w")) || !strncmp(buffer, "s", strlen("s")) || !strncmp(buffer, "e", strlen("e"))) {
             checkDir(buffer[0]);
@@ -143,6 +139,16 @@ void clear() {
         stack[top] = 0;
         top--;
     }
+}
+
+void socketConnect() {
+    printf("Waiting for client...\n");
+    sockfd = accept(listenfd, (struct sockaddr *) NULL, NULL);
+    if (sockfd < 0) {
+        perror("Accept failed");
+        exit(EXIT_FAILURE);
+    }
+    printf("Client connected\n");
 }
 
 void payload(char* payload) {
