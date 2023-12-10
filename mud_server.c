@@ -83,14 +83,14 @@ int main() {
     socketConnect();
 
     while (1) {
-        read(sockfd, buffer, sizeof(buffer));
-        if (!strncmp(buffer, "exit", strlen("exit"))) {
-            close(sockfd);
-            socketConnect();
-        } else if (!strncmp(buffer, "reset", strlen("reset"))) {
-            strcpy(curr, "/home/ubuntu/start/");
-            clear();
-        } else if (!strncmp(buffer, "n", strlen("n")) || !strncmp(buffer, "w", strlen("w")) || !strncmp(buffer, "s", strlen("s")) || !strncmp(buffer, "e", strlen("e"))) {
+        if (read(sockfd, buffer, sizeof(buffer)) == 0) {
+            close(sockfd); // close conn socket
+            socketConnect(); // listen for new conn
+            strcpy(curr, "/home/ubuntu/start/"); // reset curr path
+            clear(); // clear stack
+            continue; // first read error, read again after new conn
+        }
+        if (!strncmp(buffer, "n", strlen("n")) || !strncmp(buffer, "w", strlen("w")) || !strncmp(buffer, "s", strlen("s")) || !strncmp(buffer, "e", strlen("e"))) {
             checkDir(buffer[0]);
         }
     }
