@@ -31,7 +31,7 @@ int main(int argc, char const* argv[]) { //
     while (1) {
         fgets(buffer, MAX_LEN, stdin);
         write(sockfd, buffer, strlen(buffer));
-        if (!strncmp(buffer, "stop", strlen("stop"))) break;
+        if (!strncmp(buffer, "exit", strlen("exit"))) break;
     }
 
     close(sockfd);

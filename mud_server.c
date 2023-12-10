@@ -91,9 +91,7 @@ int main() {
 
     while (1) {
         read(sockfd, buffer, sizeof(buffer));
-        if (!strncmp(buffer, "stop", strlen("stop"))) {
-            break;
-        } else if (!strncmp(buffer, "reset", strlen("reset"))) {
+        if (!strncmp(buffer, "reset", strlen("reset"))) {
             strcpy(curr, "./start/");
             clear();
         } else if (!strncmp(buffer, "n", strlen("n")) || !strncmp(buffer, "w", strlen("w")) || !strncmp(buffer, "s", strlen("s")) || !strncmp(buffer, "e", strlen("e"))) {
