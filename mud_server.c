@@ -25,6 +25,7 @@ void push(char c);
 char pop();
 char peek();
 int empty();
+void clear();
 
 MQTTClient client;
 char buffer[MAX_LEN];
@@ -90,8 +91,11 @@ int main() {
 
     while (1) {
         read(sockfd, buffer, sizeof(buffer));
-        if (!strncmp(buffer, "exit", strlen("exit"))) {
+        if (!strncmp(buffer, "stop", strlen("stop"))) {
             break;
+        } else if (!strncmp(buffer, "reset", strlen("reset"))) {
+            strcpy(curr, "./start/");
+            clear();
         } else if (!strncmp(buffer, "n", strlen("n")) || !strncmp(buffer, "w", strlen("w")) || !strncmp(buffer, "s", strlen("s")) || !strncmp(buffer, "e", strlen("e"))) {
             checkDir(buffer[0]);
         }
@@ -134,6 +138,13 @@ char peek() {
 
 int empty() {
     return (top == -1) ? 1 : 0;
+}
+
+void clear() {
+    while (!empty()) {
+        stack[top] = 0;
+        top--;
+    }
 }
 
 void payload(char* payload) {
