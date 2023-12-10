@@ -5,24 +5,33 @@
 #include <sys/socket.h>
 #include <unistd.h>
 #include <dirent.h>
+#include <errno.h>
 #include <asm-generic/errno.h>
 
 #include "MQTTClient.h"
 
-#define ADDRESS     "localhost"
-#define CLIENTID    "Server"
+#define ADDRESS     "tcp://localhost:1883"
+#define CLIENTID    "MUD"
 #define TOPIC       "home/ubuntu/final"
 
+#define STACK_SIZE 64
 #define MAX_LEN 1024
 #define PORT 8888
 
 void checkDir(char c);
+void payload(char* payload);
+
+void push(char c);
+char pop();
+char peek();
+int empty();
 
 MQTTClient client;
 char buffer[MAX_LEN];
 char curr[256] = "./start/";
-char prev[256];
-char back;
+
+int top = -1;
+char stack[STACK_SIZE];
 
 extern int errno;
 
@@ -34,9 +43,9 @@ int main() {
         printf("MQTT client initialization unsuccessful, rc=%d\n", rc);
         exit(EXIT_FAILURE);
     }
-    conn_opts.keepAliveInterval = 20; // keep alive to 20 seconds
+    conn_opts.keepAliveInterval = 0; // prevents bug with keep alive packets (https://github.com/eclipse/paho.mqtt.c/issues/1330)
     conn_opts.cleansession = 1; // make it clean
-    conn_opts.connectTimeout = 5; // timeout in 5 seconds
+    conn_opts.connectTimeout = 5; // timeout 5 seconds
     printf("MQTT client initialization successful\n");
     printf("Attempting to connect to broker...\n");
     if ((rc = MQTTClient_connect(client, &conn_opts)) != MQTTCLIENT_SUCCESS) {
@@ -48,11 +57,11 @@ int main() {
     MQTTClient_message msg = MQTTClient_message_initializer;
     MQTTClient_deliveryToken token;
 
-    int servfd, sockfd;
-    struct sockaddr_in servaddr, cliaddr;
+    int listenfd, sockfd;
+    struct sockaddr_in servaddr;
     // Creating socket
-    servfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (servfd == -1) {
+    listenfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (listenfd == -1) {
         perror("Socket creation failed");
         exit(EXIT_FAILURE);
     }
@@ -62,44 +71,69 @@ int main() {
     servaddr.sin_addr.s_addr = INADDR_ANY;
     servaddr.sin_port = htons(PORT);
     // Binding socket
-    if (bind(servfd, (struct sockaddr *) &servaddr, sizeof(servaddr)) != 0) {
+    if (bind(listenfd, (struct sockaddr *) &servaddr, sizeof(servaddr)) != 0) {
         perror("Binding failed");
         exit(EXIT_FAILURE);
     }
     // Listening for connections
-    if (listen(servfd, 5) != 0) {
+    if (listen(listenfd, 5) != 0) {
         perror("Listening failed");
         exit(EXIT_FAILURE);
     }
-    printf("Waiting for socket client to connect...\n");
-    socklen_t len = sizeof(cliaddr);
-    sockfd = accept(servfd, (struct sockaddr *)&cliaddr, &len);
+    printf("Waiting for client...\n");
+    sockfd = accept(listenfd, (struct sockaddr *) NULL, NULL);
     if (sockfd < 0) {
         perror("Accept failed");
         exit(EXIT_FAILURE);
     }
-    printf("Socket client connected.\n");
-
+    printf("Client connected\n");
 
     while (1) {
         read(sockfd, buffer, sizeof(buffer));
         if (!strncmp(buffer, "exit", strlen("exit"))) {
-            printf("Exiting MUD");
             break;
-        } else if (!strncmp(buffer, "N", strlen("N")) || !strncmp(buffer, "W", strlen("W")) || !strncmp(buffer, "S", strlen("S")) || !strncmp(buffer, "E", strlen("E"))) {
+        } else if (!strncmp(buffer, "n", strlen("n")) || !strncmp(buffer, "w", strlen("w")) || !strncmp(buffer, "s", strlen("s")) || !strncmp(buffer, "e", strlen("e"))) {
             checkDir(buffer[0]);
         }
     }
-    read(sockfd, buffer, sizeof(buffer));
-    printf("Reading %s\n", buffer);
-    printf("Writing: hello\n");
-    write(sockfd, "hello", strlen("hello"));
 
-
-    printf("Closing sockets");
     close(sockfd);
-    close(servfd);
+    close(listenfd);
+    printf("Closed sockets\n");
+    if ((rc = MQTTClient_disconnect(client, 10000)) != MQTTCLIENT_SUCCESS) {
+        printf("MQTT client disconnection failed, rc=%d\n", rc);
+    }
+    MQTTClient_destroy(&client);
     return 0;
+}
+
+void push(char c) {
+    if (top == STACK_SIZE - 1) {
+        perror("Stack overflow");
+        exit(EXIT_FAILURE);
+    } else {
+        top++;
+        stack[top] = c;
+    }
+}
+
+char pop() {
+    char result = peek();
+    top--;
+    return result;
+}
+
+char peek() {
+    if (empty()) {
+        perror("Empty stack");
+        exit(EXIT_FAILURE);
+    } else {
+        return stack[top];
+    }
+}
+
+int empty() {
+    return (top == -1) ? 1 : 0;
 }
 
 void swap(char *str1, char *str2) {
@@ -116,48 +150,59 @@ void payload(char* payload) {
     MQTTClient_deliveryToken token;
     msg.payload = payload;
     msg.payloadlen = (int) strlen(payload);
-    msg.qos = 1;
+    msg.qos = 0;
     msg.retained = 0;
     if ((rc = MQTTClient_publishMessage(client, TOPIC, &msg, &token)) != MQTTCLIENT_SUCCESS) {
         printf("Failed to publish message, rc=%d\n", rc);
         exit(EXIT_FAILURE);
     }
     MQTTClient_waitForCompletion(client, token, 10000L);
-    printf("Sending payload '%s'\n", payload);
 }
 
 void printFile(char *fileName) {
-    char *path = NULL;
-    char *output = NULL;
+    char path[256]; // file path
+    char output[32]; // file output
+    strcpy(path, curr);
     strncat(path, fileName, 16);
-    FILE *file = fopen(path, "r");
-    fgets(output, sizeof(output), file);
-    printf("%s", output); // replace w/ payload
-    fclose(file);
+    // if file exists
+    if (access(path, F_OK)) {
+        FILE *file = fopen(path, "r");
+        fgets(output, sizeof(output), file);
+        output[strcspn(output, "\n")] = 0; // remove newline
+        payload(output);
+        fclose(file);
+    }
 }
 
 void checkDir(char c) {
-    char oldPrev[256];
-    strcpy(oldPrev, prev);
+    // peek from stack to navigate
+    char back = 0;
+    if (!empty()) {
+        back = peek();
+    }
     if (c == back) {
-        swap(curr, prev);
+        // backtrack, cut off last 2 characters to go back a directory
+        curr[strlen(curr) - 2] = '\0';
+        pop();
     } else {
-        strcpy(prev, curr);
         char temp[3];
         temp[0] = c;
         temp[1] = '/';
         temp[2] = '\0';
         strncat(curr, temp, 3);
+        if (c == 'n') push('s');
+        if (c == 'w') push('e');
+        if (c == 's') push('n');
+        if (c == 'e') push('w');
     }
+
     DIR *dir = opendir(curr);
     if (dir) {
-        back = c;
-        printf("Curr: %s\n", curr);
         printFile("desc.txt");
-        //printFile("item.txt");
+        printFile("item.txt");
     } else if (errno == ENOENT) {
-        printf("You can't go there"); // replace payload
-        strcpy(curr, prev);
-        strcpy(prev, oldPrev);
+        payload("You can't go there");
+        curr[strlen(curr) - 2] = '\0';
+        pop();
     }
 }
