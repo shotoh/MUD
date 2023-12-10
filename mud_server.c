@@ -165,7 +165,7 @@ void printFile(char *fileName) {
     strcpy(path, curr);
     strncat(path, fileName, 16);
     // if file exists
-    if (access(path, F_OK)) {
+    if (!access(path, F_OK)) {
         FILE *file = fopen(path, "r");
         fgets(output, sizeof(output), file);
         output[strcspn(output, "\n")] = 0; // remove newline
