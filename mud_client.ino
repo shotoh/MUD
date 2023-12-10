@@ -19,7 +19,7 @@
 
 const char *user = "blueberrypie";
 const char *pass = "bbbbaaaa";
-const char *inTopic = "home/mud-project/in";
+const char *inTopic = "home/ubuntu/final";
 
 int sockfd;
 char buffer[MAX_LEN];
@@ -72,6 +72,7 @@ void setup() {
         Serial.println("Connection failed");
         exit(EXIT_FAILURE);
     }
+    Serial.println("Connected to MUD server");
 
     // mqtt stuff
     client.setServer(server, 1883);
