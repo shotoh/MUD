@@ -133,7 +133,7 @@ void loop()
 void send(const char *msg)
 {
     snprintf(buffer, sizeof(buffer), msg);
-    printf("SENDING EAST"); // todo remove
+    printf(msg); // todo remove
     write(sockfd, buffer, strlen(buffer));
 }
 
