@@ -113,19 +113,19 @@ void loop()
     west.loop();
     if (east.isPressed())
     {
-        send("EAST");
+        send("e");
     }
     if (north.isPressed())
     {
-        send("NORTH");
+        send("n");
     }
     if (west.isPressed())
     {
-        send("WEST");
+        send("w");
     }
     if (south.isPressed())
     {
-        send("SOUTH");
+        send("s");
     }
     client.loop();
 }
