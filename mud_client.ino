@@ -133,7 +133,7 @@ void loop()
 void send(const char *msg)
 {
     snprintf(buffer, sizeof(buffer), msg);
-    printf(msg + "\n"); // todo remove
+    Serial.println(msg + "\n"); // todo remove
     write(sockfd, buffer, strlen(buffer));
 }
 
