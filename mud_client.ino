@@ -18,12 +18,9 @@
 #define MAX_LEN 1024
 
 #define W_BUTTON 12
-//Button Green (S):
-#define S_BUTTON 33
-//Button Yellow (E):
-#define E_BUTTON 27
-//Button Red (N):
-#define N_BUTTON 32
+#define S_BUTTON 2
+#define E_BUTTON 0
+#define N_BUTTON 15
 
 const char *user = "blueberrypie";
 const char *pass = "bbbbaaaa";
@@ -42,8 +39,7 @@ WiFiClient espClient;
 PubSubClient client(espClient);
 LiquidCrystal_I2C lcd(0x27, 16, 2);
 
-void setup()
-{
+void setup() {
     Serial.begin(115200);
 
     // button stuff
@@ -54,8 +50,7 @@ void setup()
 
     // lcd stuff
     Wire.begin(SDA, SCL);
-    if (!i2CAddrTest(0x27))
-    {
+    if (!i2CAddrTest(0x27)) {
         lcd = LiquidCrystal_I2C(0x3F, 16, 2);
     }
     lcd.init();
@@ -64,8 +59,7 @@ void setup()
 
     // wifi stuff
     WiFi.begin(user, pass);
-    while (WiFi.status() != WL_CONNECTED)
-    {
+    while (WiFi.status() != WL_CONNECTED) {
         delay(500);
         Serial.println("Connecting to WiFi...");
     }
@@ -75,8 +69,7 @@ void setup()
     struct sockaddr_in servaddr;
     // Creating TCP socket
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (sockfd == -1)
-    {
+    if (sockfd == -1) {
         Serial.println("Socket creation failed");
         exit(EXIT_FAILURE);
     }
@@ -84,10 +77,9 @@ void setup()
     // Filling server information
     servaddr.sin_family = AF_INET;
     servaddr.sin_port = htons(PORT);
-    servaddr.sin_addr.s_addr = inet_addr("35.212.252.59"); // Change this to the server's IP
+    servaddr.sin_addr.s_addr = inet_addr("35.212.252.59");  // Change this to the server's IP
     // Connect to the server
-    if (connect(sockfd, (struct sockaddr *)&servaddr, sizeof(servaddr)) != 0)
-    {
+    if (connect(sockfd, (struct sockaddr *)&servaddr, sizeof(servaddr)) != 0) {
         Serial.println("Connection failed");
         exit(EXIT_FAILURE);
     }
@@ -101,65 +93,51 @@ void setup()
     // close(sockfd); implement somewhere
 }
 
-void loop()
-{
-    if (!client.connected())
-    {
+void loop() {
+    if (!client.connected()) {
         reconnect();
     }
     east.loop();
     north.loop();
     south.loop();
     west.loop();
-    if (east.isPressed())
-    {
+    if (east.isPressed()) {
         send("e");
     }
-    if (north.isPressed())
-    {
+    if (north.isPressed()) {
         send("n");
     }
-    if (west.isPressed())
-    {
+    if (west.isPressed()) {
         send("w");
     }
-    if (south.isPressed())
-    {
+    if (south.isPressed()) {
         send("s");
     }
     client.loop();
 }
 
-void send(const char *msg)
-{
+void send(const char *msg) {
     snprintf(buffer, sizeof(buffer), msg);
-    Serial.println(msg + "\n"); // todo remove
+    Serial.println(msg);
     write(sockfd, buffer, strlen(buffer));
 }
 
-bool i2CAddrTest(uint8_t addr)
-{
+bool i2CAddrTest(uint8_t addr) {
     Wire.begin();
     Wire.beginTransmission(addr);
-    if (Wire.endTransmission() == 0)
-    {
+    if (Wire.endTransmission() == 0) {
         return true;
     }
     return false;
 }
 
-void reconnect()
-{
-    while (!client.connected())
-    {
+void reconnect() {
+    while (!client.connected()) {
         Serial.print("Attempting to connect to MQTT...");
-        if (client.connect("esp32"))
-        {
+        if (client.connect("esp32")) {
             Serial.println("connected");
             client.subscribe(inTopic);
-        }
-        else
-        {
+        } else {
             Serial.print("failed, rc=");
             Serial.print(client.state());
             Serial.println(" trying again in 5 seconds");
@@ -168,11 +146,10 @@ void reconnect()
     }
 }
 
-void callback(char *topic, byte *payload, unsigned int length)
-{
+void callback(char *topic, byte *payload, unsigned int length) {
+    lcd.clear();
     lcd.setCursor(0, 0);
-    for (int i = 0; i < length; i++)
-    {
+    for (int i = 0; i < length; i++) {
         if (i == 16)
             lcd.setCursor(0, 1);
         if (i == 32)
